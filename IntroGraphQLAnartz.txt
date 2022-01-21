@@ -70,4 +70,321 @@ httpServer.listen({
   console.log('Servidor corriendo en el puerto 3003');
 });
 
-MINUTO 32
+NOTA: el modulo compression comprime las responses que envia el server a gzip.En principio es sólo usarlo como middleware pero puede configurarse.Investigar más.Parece bueno.	
+
+				SERVIDOR API GRAPHQL - PRIMERAS CONFIGURACIONES
+
+ IMPORTANTE:en un resolver siempre hay cuatro argumentos,el primero es un objeto indefinido,el segundo son los args y el tercero es el contexto.El contexto es la información para compartir con por ejemplo la base de datos,el token,la Subscription,etc... 
+El cuarto es la info,que me da información sobre esa query o mutation.Lógicamente si quiero llegar hasta la info tengo que definir los cuatro,pero son opcionales:
+ const resolverDefinitions = {
+  Query:{
+    helloWithName(root:object, args:{name: string}, context:object,info:object){}
+
+Fijate que todos los argumentos son de tipo objeto.
+
+Bien,en cuanto a los pasos a seguir,primero hay que crear los typeDefinitions,despues los resolvers:
+/* Definir  los typeDefinitions*/
+const typeDefinitions = `
+  type Query {
+    hello: String!
+    helloWithName(name: String!): String!
+    peopleNumber: Int!
+
+  }
+`;
+
+/* DOS Dar solución a las definiciones anteriores */
+const resolverDefinitions = {
+  Query: {
+    hello: (): string => 'Hello World!',
+    helloWithName: (
+      _: object,
+      args: { name: string },
+      __: object,
+      info: object): string => {
+        console.log(info);
+        return `Hello ${args.name}`
+    },
+    peopleNumber: () => 1
+  }
+};
+
+/* TRES Construir el schema */
+const schema: GraphQLSchema = makeExecutableSchema({
+  typeDefs: typeDefinitions,
+  resolvers: resolverDefinitions
+});
+
+Es en este paso tres donde entra apollo-server-express ya que hay que importar el método makeExecutableSchema de él.Para crear el schema si que se usa el módulo core:
+import { GraphQLSchema } from 'graphql';
+import { makeExecutableSchema } from 'apollo-server-express';
+
+Los pasos 4 y 5 crean el servidor apollo y le aplican el servidor express como middleware:
+/* CUATRO CONFIGURAR EL SERVIDOR APOLLO SERVER */
+const server = new ApolloServer({
+  schema,
+  introspection: true, //necesario para producción
+  playground: true //necesario para acceder al playground
+});
+
+/* QUINTO aplicar el middleware a este nuevo servidor*/
+server.applyMiddleware({ app });
+
+Para poder usar una interfaz web con apollo-server hay que usar su playground:
+
+app.use('/', expressPlayGround({
+  endpoint: '/graphql'
+}));
+
+Ahora ya puedo ir a /graphql y ver la interfaz web.Fijate que normalmente los types y los resolvers van a venir de varios lados
+
+					REFACTORIZAR PASOS ANTERIORES.
+
+Una forma de refactorizar el código anterior es usando una clase:
+
+class Server {
+  constructor(){
+    this.initialize();
+  }
+  /* inicializar todas las configuraciones */
+  private initialize(): void {
+  }
+
+  private configExpress(){}
+  private configApolloServer(){}
+  private configRoutes(){}
+  private createServer(){}
+
+  listen(){
+
+  }
+  
+}
+
+export default Server;
+
+Al final la clase quedará asi(fijate que no llamo al listen en el initialize pero incluso podría llamarlo:
+import express from 'express';
+import cors from 'cors';
+import compression from 'compression';
+import { GraphQLSchema } from 'graphql';
+import {
+  ApolloServer,
+  makeExecutableSchema
+} from 'apollo-server-express';
+import expressPlayGround from 'graphql-playground-middleware-express';
+import { createServer, Server as HTTPServer } from 'http';
+
+
+class Server {
+  private app!: express.Application;
+  private schema!: GraphQLSchema;
+  private server!: ApolloServer;
+  private httpServer!: HTTPServer;
+  private readonly DEFAULT_PORT_SERVER: number= +process.env.PORT! || 3003;
+
+  constructor() {
+    this.initialize();
+  }
+
+  /* inicializar todas las configuraciones */
+  private initialize(): void {
+    this.configExpress();
+    this.configApolloServer();
+    this.configRoutes();
+    this.createServer();
+  }
+
+  private configExpress() {
+    this.app = express();
+    this.app.use(cors())
+    this.app.use(compression())
+
+  }
+
+  private configApolloServer() {
+    /* UNO Definir  los typeDefinitions*/
+    const typeDefinitions = `
+      type Query {
+        hello: String!
+        helloWithName(name: String!): String!
+        peopleNumber: Int!
+      }
+    `;
+    /* DOS Dar solución a las definiciones anteriores */
+    const resolverDefinitions = {
+      Query: {
+        hello: (): string => 'Hello World!',
+        helloWithName: (
+          _: object,
+          args: { name: string },
+          __: object,
+          info: object): string => {
+          return `Hello ${args.name}`
+        },
+        peopleNumber: () => 1
+      }
+    };
+    /* TRES Construir el schema */
+    this.schema = makeExecutableSchema({
+      typeDefs: typeDefinitions,
+      resolvers: resolverDefinitions
+    });
+    /* CUATRO CONFIGURAR EL SERVIDOR APOLLO SERVER */
+    this.server = new ApolloServer({
+      schema: this.schema,
+      introspection: true, //necesario para producción
+      playground: true //necesario para acceder al playground
+    })
+    /* QUINTO aplicar el middleware a este nuevo servidor*/
+    this.server.applyMiddleware({ app: this.app })
+  }
+
+
+  private configRoutes() {
+    this.app.use('/hello', (_, res) => {
+      res.send('Bienvenidos/as al curso de GraphQL by Anartz por la tarde');
+    });
+
+    this.app.use('/', expressPlayGround({
+      endpoint: '/graphql'
+    }));
+  }
+
+  private createServer() {
+    this.httpServer = createServer(this.app);
+  }
+
+  listen(): void {
+    this.httpServer.listen(this.DEFAULT_PORT_SERVER, () => {
+      console.clear();
+      console.log('Apollo Server on http://localhost:3003/graphql')
+    })
+  }
+
+}
+
+export default Server;
+
+En el app.ts simplemente llamo al servidor:
+
+import Server from "./server";
+
+const server = new Server();
+server.listen();
+
+Fijate que es muy interesante esta forma con clases y no es dificil,además de ser muy formativa.Bien,pero si me fijo atentamente veo que los resolvers y los typeDefinitions deberían venir desde otro archivo también.
+
+NOTA:los tipos de definición y los resolvers siempre deberían de venir desde otro archivo.Asi pues creo dos directorios, resolvers y schema(fijate que en schema van a ir archivos con extensión .graphql):
+
+IMPORTANTE:es en este directorio schema donde van a ir los typeDefinitions,aparte de la fusión con los resolvers y la creación del schema:
+En el .graphql:
+type Query {
+  hello: String!
+  helloWithName(name: String!): String!
+  peopleNumber: Int!
+}
+
+Fijate que es lo que habia entre las comillas invertidas anteriormente.Bien,ahora falta crear el schema.
+IMPORTANTE: Para poder importar algo desde este archivo .graphql vamos a necesitar la librería 'graphql-import-node',la cual ya hemos instalado.De lo contrario no podremos importar nada desde un graphql.Además,se recomienda que sea el primer import(o al menos que esté por encima del que se trae el archivo):
+ 
+import "graphql-import-node"
+import typeDefinitions from "./schema.graphql" <- es una import default,puedo darle cualquier nombre.
+
+Realmente es muy sencillo,si tengo dudas puedo volver a consultar el video o el proyecto,pero se trata de crear dos directorios y refactorizar todo bien:
+
+import typeDefinitions from "./schema.graphql";
+import 'graphql-import-node';
+import { resolvers } from "../resolvers";
+
+
+export const schema: GraphQLSchema = makeExecutableSchema({
+  typeDefs: [typeDefinitions],
+  resolvers: resolvers,
+});
+
+Ahora vamoa a hacer una cosa interesante y es pedir el schema de GraphQLSchema en el constructor del server.Si no se proporciona uno lanzaremos un error:
+
+  private schema!: GraphQLSchema;
+  private readonly DEFAULT_PORT_SERVER: number= +process.env.PORT! || 3003;
+
+  constructor(schema: GraphQLSchema) {
+    if(schema === undefined) {
+      throw new Error('El schema no puede ser undefined');
+    }
+    this.schema = schema;
+    this.initialize();
+  }
+
+Lógicamente esto implica proporcionar un schema al realizar el new Server():
+const server = new Server(schema);
+
+IMPORTANTE: fijate que no puede resolver el .graphql por el orden de los imports:
+type Query {
+     ^^^^^
+SyntaxError: Unexpected identifier
+Lo habiamos dejado mal a propósito,pero los imports son secuenciales asi que su orden importa:
+
+import 'graphql-import-node'; <- SIEMPRE EL PRIMERO
+import { makeExecutableSchema } from "apollo-server-express";
+import { GraphQLSchema } from "graphql";
+
+import typeDefinitions from "./schema.graphql";
+import { resolvers } from "../resolvers";
+
+				TRABAJANDO CON LA FAKE DATA EN LOS JSON
+
+Ya habiamos acordado que vamos a trabajar con fake data en archivos JSON.Usarmos dos archivos,uno de cursos y otro de alumnos.Un curso luce asi:
+    {
+      "id": "1",
+      "title": "Compodoc: Crea documentación en proyectos Angular/Ionic/TS",
+      "description": "Crear documentación de calidad y MUY fácil de mantener con Compodoc para proyectos de Angular 2+ / Ionic 2+ / Typescript",
+      "clases": 73,
+      "time": 3.5,
+      "level": "MEDIUM",
+      "logo": "https://i.udemycdn.com/course/240x135/1777518_b681_6.jpg",
+      "path": "/compodoc-crea-documentacion-en-angular-ionic",
+      "teacher": "Anartz Mugika Ledo",
+      "price": 0,
+      "reviews": [
+        {
+          "id": "1",
+          "name": "Juan Gómez Navarro",
+          "points": 4.5,
+          "comment": "Muy buen curso, justo lo que necesitaba!"
+        }
+      ]
+    },
+Como puedo ver tiene bastantes propiedades y de vatios tipos.Un estudiante luce algo más sencillo:
+ {
+        "id": "1",
+        "name": "Leanne Graham",
+        "email": "Sincere@april.biz",
+        "website": "hildegard.org",
+        "courses": [
+           "1", "2"
+        ]
+  },
+
+IMPORTANTE: el array courses tiene los IDS de los cursos,es decir que apunta a una PK
+
+				QUERY LISTA DE ESTUDIANTES
+
+Simplemente creo la type definition:
+
+type Query {
+  hello: String!
+  helloWithName(name: String!): String!
+  peopleNumber: Int!
+  students: [Student!]!
+}
+""" custom scalar """
+type Student {
+  id: ID!
+  name: String!
+  email: String!
+  website: String!
+  courses: [String!]!
+}
+Fijate que para comentar son triples comillas y que tengo que crear ya un custom tipe.En el resolver habrá que dar solución(o resolver) esta definición.
+1h31m

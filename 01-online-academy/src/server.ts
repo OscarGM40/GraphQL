@@ -12,12 +12,16 @@ import { createServer, Server as HTTPServer } from 'http';
 
 class Server {
   private app!: express.Application;
-  private schema!: GraphQLSchema;
   private server!: ApolloServer;
   private httpServer!: HTTPServer;
+  private schema!: GraphQLSchema;
   private readonly DEFAULT_PORT_SERVER: number= +process.env.PORT! || 3003;
 
-  constructor() {
+  constructor(schema: GraphQLSchema) {
+    if(schema === undefined) {
+      throw new Error('El schema no puede ser undefined');
+    }
+    this.schema = schema;
     this.initialize();
   }
 
@@ -37,33 +41,8 @@ class Server {
   }
 
   private configApolloServer() {
-    /* UNO Definir  los typeDefinitions*/
-    const typeDefinitions = `
-      type Query {
-        hello: String!
-        helloWithName(name: String!): String!
-        peopleNumber: Int!
-      }
-    `;
-    /* DOS Dar solución a las definiciones anteriores */
-    const resolverDefinitions = {
-      Query: {
-        hello: (): string => 'Hello World!',
-        helloWithName: (
-          _: object,
-          args: { name: string },
-          __: object,
-          info: object): string => {
-          return `Hello ${args.name}`
-        },
-        peopleNumber: () => 1
-      }
-    };
-    /* TRES Construir el schema */
-    this.schema = makeExecutableSchema({
-      typeDefs: typeDefinitions,
-      resolvers: resolverDefinitions
-    });
+ 
+
     /* CUATRO CONFIGURAR EL SERVIDOR APOLLO SERVER */
     this.server = new ApolloServer({
       schema: this.schema,
