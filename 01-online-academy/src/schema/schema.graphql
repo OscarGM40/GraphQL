@@ -1,0 +1,15 @@
+type Query {
+  hello: String!
+  helloWithName(name: String!): String!
+  peopleNumber: Int!
+  students: [Student!]!
+}
+
+""" custom scalar """
+type Student {
+  id: ID!
+  name: String!
+  email: String!
+  website: String!
+  courses: [String!]!
+}
