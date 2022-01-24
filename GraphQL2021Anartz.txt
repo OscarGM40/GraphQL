@@ -387,4 +387,19 @@ type Student {
   courses: [String!]!
 }
 Fijate que para comentar son triples comillas y que tengo que crear ya un custom tipe.En el resolver habrá que dar solución(o resolver) esta definición.
-1h31m
+
+Diria que un scalar es un tipo en GraphQL.Cada vez que cree un custom scalar como en este caso es Student si estoy en TS tengo que crear su interface:
+export interface IStudent {
+  id: string | number;
+  name: string;
+  email: string;
+  website: string;
+  courses: Array<string>;
+}
+Fijate que el id realmente puede ser un number y que courses es un array de strings(string[]).Aunque también puedo usar Array<string>(investigar diferencias).
+Parece que es simplemente otra forma de definir arreglos.
+
+Creo la solución del resolver
+  students(_:object,{},{},info:object): IStudent[] {
+      return data.students;
+    },

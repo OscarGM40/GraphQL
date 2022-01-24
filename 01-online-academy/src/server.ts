@@ -2,12 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import { GraphQLSchema } from 'graphql';
-import {
-  ApolloServer,
-  makeExecutableSchema
-} from 'apollo-server-express';
-import expressPlayGround from 'graphql-playground-middleware-express';
-import { createServer, Server as HTTPServer } from 'http';
+import { ApolloServer, } from 'apollo-server-express';
+ import expressPlayGround from 'graphql-playground-middleware-express';
+  import { createServer, Server as HTTPServer } from 'http';
 
 
 class Server {
