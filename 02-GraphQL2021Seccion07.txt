@@ -1,8 +1,7 @@
 				INTRODUCCIÓN CON NODE-EXPRESS Y TYPESCRIPT A GRAPHQL
+        CORRESPONDIENTE A LA SECCION 07 DEL CURSO UDEMY DE ANARTZ
 
 Source: https://www.youtube.com/watch?v=NacgrA7l1ZA
-
-NOTA.anteriormente usé express-graphql con Fazt.Ahora veré graphql con apollo.
 
 				CONFIGURAR TYPESCRIPT EN EL PROYECTO
 

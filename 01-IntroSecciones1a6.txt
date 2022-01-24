@@ -654,18 +654,4 @@ Ya puedo ejecutar la app e ir a /graphql y ver el playground.Parece que por defe
 				SECCION 07 NUEVO PROYECTO -ACADEMIA ONLINE
 
 No vamos a usar una DB,usaremos un par de JSON como fake data.En este proyecto veremos las primeras interacciones con el playground de ApolloServer.
-Recuerda que es buena idea mergear los archivos fake:
-
-import courses from './courses.json';
-import students from './students.json';
-
-const data = {
-  courses,
-  students
-}
-
-export default data;
-
-Y recuerda que TS puede leer json,supongo que por esto:
-"dev": "nodemon src/server.ts --exec ts-node src/server.ts -e ts,graphql,json"
-
+Mañana darle caña
