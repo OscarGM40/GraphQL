@@ -5,3 +5,4 @@ export interface IStudent {
   website: string;
   courses: Array<string>; //también puedo usar string[]
 }
+

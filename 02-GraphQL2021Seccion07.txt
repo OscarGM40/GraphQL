@@ -39,7 +39,7 @@ Por último start será el comando que levante la app una vez buildeada:
 "start": "node build/app.js" 
 Genial.Todo sencillo hasta ahora.
 
-					CONFIGURAR SERVIDOR EXPRESS
+				    	CONFIGURAR SERVIDOR EXPRESS
 
 Fijate que él crea el servidor con createServer del modulo core http y que declara una ruta GET con app.use.Investigar sobre el módulo compression:
 
@@ -73,7 +73,7 @@ NOTA: el modulo compression comprime las responses que envia el server a gzip.En
 
 				SERVIDOR API GRAPHQL - PRIMERAS CONFIGURACIONES
 
- IMPORTANTE:en un resolver siempre hay cuatro argumentos,el primero es un objeto indefinido,el segundo son los args y el tercero es el contexto.El contexto es la información para compartir con por ejemplo la base de datos,el token,la Subscription,etc... 
+IMPORTANTE:en un resolver siempre hay cuatro argumentos,el primero es un objeto indefinido,el segundo son los args y el tercero es el contexto.El contexto es la información para compartir con por ejemplo la base de datos,el token,la Subscription,etc... 
 El cuarto es la info,que me da información sobre esa query o mutation.Lógicamente si quiero llegar hasta la info tengo que definir los cuatro,pero son opcionales:
  const resolverDefinitions = {
   Query:{
@@ -82,6 +82,7 @@ El cuarto es la info,que me da información sobre esa query o mutation.Lógicame
 Fijate que todos los argumentos son de tipo objeto.
 
 Bien,en cuanto a los pasos a seguir,primero hay que crear los typeDefinitions,despues los resolvers:
+
 /* Definir  los typeDefinitions*/
 const typeDefinitions = `
   type Query {
@@ -119,6 +120,7 @@ import { GraphQLSchema } from 'graphql';
 import { makeExecutableSchema } from 'apollo-server-express';
 
 Los pasos 4 y 5 crean el servidor apollo y le aplican el servidor express como middleware:
+
 /* CUATRO CONFIGURAR EL SERVIDOR APOLLO SERVER */
 const server = new ApolloServer({
   schema,
@@ -134,6 +136,7 @@ Para poder usar una interfaz web con apollo-server hay que usar su playground:
 app.use('/', expressPlayGround({
   endpoint: '/graphql'
 }));
+Creo que esto es opcional.Investigar
 
 Ahora ya puedo ir a /graphql y ver la interfaz web.Fijate que normalmente los types y los resolvers van a venir de varios lados
 
@@ -239,7 +242,6 @@ class Server {
     this.server.applyMiddleware({ app: this.app })
   }
 
-
   private configRoutes() {
     this.app.use('/hello', (_, res) => {
       res.send('Bienvenidos/as al curso de GraphQL by Anartz por la tarde');
@@ -277,6 +279,7 @@ Fijate que es muy interesante esta forma con clases y no es dificil,además de s
 NOTA:los tipos de definición y los resolvers siempre deberían de venir desde otro archivo.Asi pues creo dos directorios, resolvers y schema(fijate que en schema van a ir archivos con extensión .graphql):
 
 IMPORTANTE:es en este directorio schema donde van a ir los typeDefinitions,aparte de la fusión con los resolvers y la creación del schema:
+
 En el .graphql:
 type Query {
   hello: String!
@@ -285,9 +288,10 @@ type Query {
 }
 
 Fijate que es lo que habia entre las comillas invertidas anteriormente.Bien,ahora falta crear el schema.
-IMPORTANTE: Para poder importar algo desde este archivo .graphql vamos a necesitar la librería 'graphql-import-node',la cual ya hemos instalado.De lo contrario no podremos importar nada desde un graphql.Además,se recomienda que sea el primer import(o al menos que esté por encima del que se trae el archivo):
+
+IMPORTANTE: Para poder importar un archivo con extensión .graphql vamos a necesitar la librería 'graphql-import-node',la cual ya hemos instalado.De lo contrario no podremos importar nada desde un graphql.Además,es obligatorio que sea el primer import(o al menos que esté por encima del que se trae el archivo):
  
-import "graphql-import-node"
+import "graphql-import-node" <- siempre arriba
 import typeDefinitions from "./schema.graphql" <- es una import default,puedo darle cualquier nombre.
 
 Realmente es muy sencillo,si tengo dudas puedo volver a consultar el video o el proyecto,pero se trata de crear dos directorios y refactorizar todo bien:
@@ -296,13 +300,12 @@ import typeDefinitions from "./schema.graphql";
 import 'graphql-import-node';
 import { resolvers } from "../resolvers";
 
-
 export const schema: GraphQLSchema = makeExecutableSchema({
   typeDefs: [typeDefinitions],
   resolvers: resolvers,
 });
 
-Ahora vamoa a hacer una cosa interesante y es pedir el schema de GraphQLSchema en el constructor del server.Si no se proporciona uno lanzaremos un error:
+Ahora vamos a hacer una cosa interesante y es pedir el schema de GraphQLSchema en el constructor del server.Si no se proporciona uno lanzaremos un error:
 
   private schema!: GraphQLSchema;
   private readonly DEFAULT_PORT_SERVER: number= +process.env.PORT! || 3003;
@@ -375,9 +378,10 @@ type Query {
   hello: String!
   helloWithName(name: String!): String!
   peopleNumber: Int!
+  " custom scalar "
   students: [Student!]!
 }
-""" custom scalar """
+""" custom object """
 type Student {
   id: ID!
   name: String!
@@ -402,3 +406,130 @@ Creo la solución del resolver
   students(_:object,{},{},info:object): IStudent[] {
       return data.students;
     },
+
+					QUERY BUSCAR ESTUDIANTE POR ID
+
+IMPORTANTE:fijate que buscar por ID puede no devolver un valor(es decir que puede ser nulo).Asi que no puedo asegurar que devuelva un Student asi(Student!):
+
+"listar un estudiante por id"
+ studentById(id:ID!): Student
+
+Si pusiera que siempre tiene que devolver un Student con Student! cuando pida un estudiante con un id que no existe me dará el siguiente error:
+Cannot return null for non-nullable field Query.studentById <- ya puedo ver que me dice que está retornando null y que he definido el campo como no nulo.
+
+NOTA: cuando esté trabajando con los rootTypes Query,Mutation o Subscription el primer argumento del resolver siempre va a ser indefinido(será definido cuando trabaje con parent,con el padre):
+ 
+  studentById(_:object,args:{id:string}): IStudent | undefined
+  {
+    return database.students.find(student => student.id === args.id);
+  }
+Recuerda que cuando busco uno find es más eficiente que filter.
+
+La query en el playground quedaría asi:
+query buscar($ID:ID!) {
+  studentById(id:$ID){
+    id
+    name
+    email
+    website
+  }
+}
+Pero fijate que si pongo ese $ID con un valor que no devuelva un Student la respuesta será esta:
+{
+  "data": {
+    "studentById": null
+  }
+}
+Esto no es bueno,debería dar más feedback como un statusCode y un mensaje más descriptivo
+
+			MEJORANDO FEEDBACK EN LAS RESPUESTAS DE GRAPHQL
+
+Siempre hay que tratar la respuesta.Para ello podemos crear otro custom scalar:
+
+type Result {
+  status:Boolean!
+  message:String!
+  list:[Student!]
+  item:Student
+}
+Fijate que la lista de Student o el Student no pueden ser obligatorios,pues pueden ser null(sin embargo ahora si que va a ser obligatorio que se devuelva un Result!):
+type Query {
+  "listar estudiantes"
+  students: Result!
+  "listar un estudiante por id"
+  studentById(id:ID!): Result!
+}
+Lógicamente ahora hay que ir a las soluciones de las queries y en los resolvers devolver una respuesta acorde a este objeto que la tipa.
+
+  Query: {
+    students(_:object,{},__:{},___:object): {
+      status:boolean;
+      message:string;
+      list:IStudent[]
+    } 
+    {
+      return {
+        status:true,
+        message:"Lista correctamente cargada",
+        list:database.students
+      };
+    },
+
+Lo mismo para el estudiante:
+ studentById(_:object, args: {id:string} ): {
+      status:boolean;
+      message:string;
+      item: IStudent | null;
+    }
+    {
+      const student = database.students.find(
+        (student:IStudent) => student.id === args.id);
+
+      return { 
+        status:student === undefined ? false : true,
+        message:student 
+          ? "Estudiante correctamente cargado"
+          : "Estudiante no encontrado con el id "+args.id,
+        item: student ? student: null
+      }
+    },
+Ahora si pido uno que no exista veré un feedback mucho mejor:
+{
+  "data": {
+    "studentById": {
+      "status": false,
+      "message": "Estudiante no encontrado con el id 11",
+      "item": null
+    }
+  }
+}
+Lo importante es entender que puedo programar lo que quiera
+
+				QUERY LISTAR CURSOS Y LISTAR UN CURSO
+
+Creo otra interfaz y su schema:
+
+export interface ICourse {
+  id: string | number;
+  title: string;
+  description: string;
+  clases:number;
+  time: number;
+  level: string;
+  logo: string;
+  teacher: string;
+  path: string;
+  price: number;
+}
+
+IMPORTANTE: fijate que cuando tenga varios archivos en una carpeta es mucho mejor ser organizado y exportar importar en bloque.Asi,dentro del folder interfaces creo un index.ts y exporto todo desde él:
+
+En el folder/index.ts
+export * from './course.interface';
+export * from "./student.interface";
+export * from ...
+Y ahora ya no usaré tantos imports:
+import { ICourse, IStudent } from "../interfaces"; <- en otro archivo
+Perfecto.Gran consejo.
+
+2h10m

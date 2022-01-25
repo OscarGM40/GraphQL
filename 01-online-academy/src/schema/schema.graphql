@@ -1,15 +1,54 @@
 type Query {
-  hello: String!
-  helloWithName(name: String!): String!
-  peopleNumber: Int!
-  students: [Student!]!
+  "listar estudiantes"
+  students: ResultStudent!
+  "listar un estudiante por id"
+  studentById(id:ID!): ResultStudent!
+  "listar todos los cursos"
+  courses: ResultCourse!
+  "listar un curso filtrando por ID"
+  courseById(id:ID!): ResultCourse!
 }
 
 """ custom scalar """
 type Student {
+  "id del estudiante"
   id: ID!
   name: String!
   email: String!
   website: String!
   courses: [String!]!
+}
+
+"tipado para la response"
+type ResultStudent {
+  status:Boolean!
+  message:String!
+  list:[Student!]
+  item: Student
+}
+
+type ResultCourse {
+  status:Boolean!
+  message:String!
+  list:[Course!]
+  item: Course
+}
+"descripcion de un curso"
+type Course {
+  id: ID!
+  title: String!
+  description: String!
+  clases: Int!
+  time: Float!
+  level:Level!
+  logo:String!
+  path: String!
+  teacher: String!
+  price: Float!
+}
+
+enum Level {
+  ALL
+  BEGINNER
+  MEDIUM
 }
