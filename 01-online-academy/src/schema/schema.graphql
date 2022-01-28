@@ -1,12 +1,21 @@
 type Query {
   "listar estudiantes"
-  students: ResultStudent!
+  students: Result!
   "listar un estudiante por id"
-  studentById(id:ID!): ResultStudent!
+  studentById(id:ID!): Result!
   "listar todos los cursos"
-  courses: ResultCourse!
+  courses: Result!
   "listar un curso filtrando por ID"
-  courseById(id:ID!): ResultCourse!
+  courseById(id:ID!): Result!
+}
+
+type Mutation {
+  "añadir un curso"
+  addCourse(course:CourseInput!):Boolean
+  "editar un curso"
+  updateCourse(id:ID!):Boolean
+  "eliminar un curso"
+  deleteCourse(id:ID!):Boolean
 }
 
 """ custom scalar """
@@ -16,23 +25,19 @@ type Student {
   name: String!
   email: String!
   website: String!
-  courses: [String!]!
+  courses: [Course!]
 }
+
+union Data = Student | Course
 
 "tipado para la response"
-type ResultStudent {
+type Result {
   status:Boolean!
   message:String!
-  list:[Student!]
-  item: Student
+  list:[Data!]
+  item: Data
 }
 
-type ResultCourse {
-  status:Boolean!
-  message:String!
-  list:[Course!]
-  item: Course
-}
 "descripcion de un curso"
 type Course {
   id: ID!
@@ -45,10 +50,25 @@ type Course {
   path: String!
   teacher: String!
   price: Float!
+  students:[Student!]!
+}
+""" fijate que al crear un curso no tiene sentido pasarle students pues no sabré que estudiantes se apuntarían a ese curso en ese momento.Y si pongo id:ID sin la ! el id pasa a ser opcional, es decir, puede ser null"""
+
+input CourseInput {
+  title: String!
+  description: String!
+  clases: Int!
+  time: Float!
+  level:Level=ALL
+  logo:String!
+  path: String!
+  teacher: String!
+  price: Float!
 }
 
 enum Level {
   ALL
   BEGINNER
   MEDIUM
+  EXPERT
 }

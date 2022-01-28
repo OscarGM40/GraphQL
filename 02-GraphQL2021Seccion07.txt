@@ -1,9 +1,67 @@
 				INTRODUCCIÓN CON NODE-EXPRESS Y TYPESCRIPT A GRAPHQL
         CORRESPONDIENTE A LA SECCION 07 DEL CURSO UDEMY DE ANARTZ
 
-Source: https://www.youtube.com/watch?v=NacgrA7l1ZA
+		MIGRAR DE APOLLO SERVER EXPRESS 2 A LA VERSION 3
+
+Fuente:https://www.youtube.com/watch?v=sQMFUDFgIEs&ab_channel=AnartzMugikaLedo-Desarrollo%26Formaci%C3%B3n
+
+IMPORTANTE: si pongo el cursor en el package.json sobre la versión de una dependencia puedo ver su última versión:
+
+Production-ready Node.js GraphQL server for Express
+Latest version: 3.6.2
+Dado que tengo esta("apollo-server-express": "2.25.3",) obviamente estoy desactualizado.
+
+NOTA:para instalar una versión usaré @^number:
+>npm install apollo-server-express@^3 <- instalame la más actual de la version 3
+Siempre va a instalar la versíon más estable o actual de esa mayor release
+
+PROBLEMAS A RESOLVER: 
+
+UNO - makeExecutableSchema ya no vendrá de apollo-server-express sino de graphql-tools:
+Cambiar 
+import { makeExecutableSchema } from "apollo-server-express";
+por
+import { makeExecutableSchema } from 'graphql-tools';
+Esto pedirá usar graphql-tools en v8+ ("graphql-tools": "8.2.0")
+De la misma manera puedo usar npm i graphql-tools@^8
+
+DOS: el playground ya viene activado en mode dev(y desactivado para prod,pero el como activarlo en prod Anartz lo dejó para otro momento)
+ this.server = new ApolloServer({
+      schema: this.schema,
+      introspection: true, //necesario para producción
+      playground: true //necesario para acceder al playground,activo desde la v3
+    })
+Simplemente lo quito:
+    this.server = new ApolloServer({
+      schema: this.schema,
+      introspection: true, //necesario para producción
+    })
+
+NOTA:puedo borrar la carpeta node_modules y asegurarme que queda todo limpio con : npm cache clean --force. Despues hago el npm install de nuevo.
+Esto lo puedo hacer cuando borre alguna dependencia desde el package.json,la borro alli,elimino la carpeta node-modules,limpio la cache y reinstalo todo.
+
+ERROR TRES: debo usar await server.start() antes de llamar a server.applyMiddleware().Simplemente lo hago:
+
+ await this.server.start(); <- me pide esto simplemente
+ this.server.applyMiddleware({ app: this.app })
+
+NOTA:puedo redireccionar de / a /graphql para ir al playground si quiero:
+  this.app.get('/', (_, res) => {
+      res.redirect('/graphql');
+    });
+Y recuerda que ya no usaré:
+ this.app.use('/', expressPlayGround({
+    endpoint: '/graphql'
+  })); 
+
+Con lo que no tengo que instalar esto:
+import expressPlayGround from 'graphql-playground-middleware-express';
+
+Usando apollo-server-core puedes volver al anterior playground, para mí sigue siendo mejor. Estoy tratando de usar subscripciones porque en esta versión no la soportan por defecto.
 
 				CONFIGURAR TYPESCRIPT EN EL PROYECTO
+
+Source: https://www.youtube.com/watch?v=NacgrA7l1ZA
 
 Creo un proyecto Node y le instalo las siguiente dependencias:
 npm install typescript.
@@ -532,4 +590,291 @@ Y ahora ya no usaré tantos imports:
 import { ICourse, IStudent } from "../interfaces"; <- en otro archivo
 Perfecto.Gran consejo.
 
-2h10m
+		RELACIONES N-M ENTRE CURSO - ESTUDIANTE(PARENT)- MODIFICAR UNA PROPIEDAD
+
+Fijate en el campo courses:
+type Student {
+  "id del estudiante"
+  id: ID!
+  name: String!
+  email: String!
+  website: String!
+  courses: [Course!]!
+}
+
+Llegados a este punto hay que entender que son los typeResolvers.Yo puedo tomar un scalar ya definido,como es el caso de Student y modificarlo en otro archivo:
+
+const typesResolver = {
+  Student: { 
+    website:(root:{website:string}) => {
+      return "Web:".concat(root.website.replace("http://","https://")).concat(;
+    },
+  }
+}
+
+export default typesResolver;
+
+Puedo hacer algo tan sencillo como reemplazar una letra.Obviamente tengo que fusionar este resolver con los demás para devolver uno solo:
+
+export const resolvers = {
+  ...queryResolvers,
+  ...typesResolver
+}
+Si ahora pido un Student va a modificar ese campo.
+  "website": "Web:hildegard.org"
+
+Bien,ahora que ya sé como modificar una propiedad,lo que vamos a hacer es pedir los cursos en un array de strings(["1","2]) y transformar la salida con esta técnica:
+
+const typesResolver = {
+  Student: { 
+    courses:(root: {courses:string[]} ) => {
+      return data.courses.filter(
+        course => root.courses.includes(course.id))
+    }
+También valdría con root.courses.indexOf(course.id) > -1 .Si es mayor de -1 es que lo ha encontrado
+LLegados a este punto hay que hacer lo mismo pero poblando los estudiantes que se han apuntado al curso.
+IMPORTANTE:en el primer argumento del resolver tengo toda la data.Sabiendo esto,puedo por ejemplo hacer la query de un curso y con ese arg.id ver todos los students que en su propiedad cursos están apuntados a ese curso:
+
+type Course {
+  id: ID!
+  title: String!
+  description: String!
+  clases: Int!
+  time: Float!
+  level:Level!
+  logo:String!
+  path: String!
+  teacher: String!
+  price: Float!
+  students:[Student!]! <- no necesito el id,ya me lo da el primer arg:
+
+const typesResolver = {
+  Student: { 
+    website:(root: {website:string} ) => {
+      return "Web:".concat(root.website.replace("http://","https://"));
+    },
+    courses:(root: {courses:string[]} ) => {
+      return data.courses.filter(
+        course => root.courses.includes(course.id))
+    }
+
+  },
+  Course: {
+  students: (root:{id:string} ) <- puedo acceder a lo que quiera => {
+  return data.students.map( student => student.courses.includes(root.id) <-Genial
+
+En la propiedad course.path vamos también a modificar ese path anteponiendole un substring.Recuerda que esto va en el resolver de tipos
+   path: (root: { path:string } ) => {
+      return "https://udemy.com/course".concat(root.path);
+    },
+Obviamente puedo usar template strings y hacer todo en una linea,por ejemplo:
+path: (root: {path:string}) => `https://udemy.com/course${root.path}`;
+
+							UNION - DATA 
+
+Si nos fijamos en estos dos types veré que son practicamente iguales:
+type ResultStudent {
+  status:Boolean!
+  message:String!
+  list:[Student!]
+  item: Student
+}
+
+type ResultCourse {
+  status:Boolean!
+  message:String!
+  list:[Course!]
+  item: Course
+}
+Puedo hacer uso de Union y unir las respuestas en una sola y no devolver directamente Student o Course sino simplemente Data que segun la respuesta será Student o Course.
+Las unions e interfaces son tipos de schema abstractos GraphQL que permiten a un campo del schema devolver uno o multiples tipos:
+union Media = Book | Movie
+
+En nuestro caso vamos a usar esta unión.Simplemente la declaro en el schema.graphql:
+union Data = Student | Course
+
+Una vez declarada hay que ir al resolver de types y darle solución.Debo buscar un par de propiedades que sean distintas en cada Modelo.En este caso Student tiene un name y Course tiene un title:
+
+  Data: {
+    __resolveType(obj: { name: string, title: string }) {
+      if (obj.name) {
+        return "Student";
+      } else if (obj.title) {
+        return "Course";
+      } else {
+        return null;
+      }
+    }
+  }
+
+Y por último al hacer la query tengo que usar ...on <Type> y decirle que quiero según sea un Student o un Course:
+
+query Students {
+  students {
+    status
+    message
+    list{
+      ...on Student{
+        ...StudentFrag
+      }
+    }
+  }
+}
+fragment StudentFrag on Student {
+  id
+  name
+  website
+  email
+ }
+Recuerda que puedo crear un fragment temporal con la sintaxis 'fragment <name> on <ModelName>.Ejemplo: fragment StudentFrag on Student {}.
+Y para usarse es con ...fragmentName,ojo.
+
+Fijate que ahora todos devuelven un Result y segun tenga una propiedad u otra filtraremos el custom scalar a devolver:
+
+union Data = Student | Course
+
+type Result {
+  status:Boolean!
+  message:String!
+  list:[Data!]
+  item: Data
+}
+
+type Query {
+  "listar estudiantes"
+  students: Result!
+  "listar un estudiante por id"
+  studentById(id:ID!): Result!
+  "listar todos los cursos"
+  courses: Result!
+  "listar un curso filtrando por ID"
+  courseById(id:ID!): Result!
+}
+
+Genial.Recuerda que cuando haya una union tengo que usar ...on Type en el playground de Apollo.
+IMPORTANTE: puedo crear y embeber tantos fragments como quiera:
+
+query CourseById($courseByIdId: ID!) {
+  courseById(id: $courseByIdId) {
+    status
+    message
+    item {
+      ... on Course {
+        ...CourseObject
+      }
+    }
+  }
+}
+
+fragment CourseObject on Course {
+  id
+  description
+  clases
+  level
+  logo
+  price
+  students {
+    ...StudentFrag
+      }
+}
+
+fragment StudentFrag on Student {
+  id
+  name
+  website
+}
+
+					MUTATIONS- PRIMEROS PASOS Y PREPARATIVOS
+
+En el schema.graphql,justo debajo de type Query creo otra sección para las mutaciones.De momento hacemos algo muy básico,ya que realmente recibiré muchos argumentos y no devolveré un Boolean:
+
+type Mutation {
+  "añadir un curso"
+  addCourse(id:ID!):Boolean
+  "editar un curso"
+  updateCourse(id:ID!):Boolean
+  "eliminar un curso"
+  deleteCourse(id:ID!):Boolean
+}
+
+En los resolvers me creo el fichero mutation.ts(fijate que tenia query.ts,types.ts y el index para mergear la salida).Si usará subscripciones obviamente me quedaría ese file por crear.
+
+Recuerda mergear los resolvers en ese file:
+
+export const resolvers = {
+  ...queryResolvers,
+  ...mutationResolvers,
+  ...typesResolver,
+}
+
+						INPUT TYPE FOR MUTATIONS
+
+REalmente podría introducir los valores individualmente,pero es mucho mejor usar un único argumento que debe declarse con 'input <Name>.
+IMPORTANTE: este nuevo type 'input'  me lo proporciona GraphQL y debo usarlo para especificar entrada de datos por argumento:
+
+* Por convención suele llamarse xxxInput
+
+input CourseInput {
+  title: String!
+  description: String!
+  clases: Int!
+  time: Float!
+  level:Level=ALL <- asignación por defecto
+  logo:String!
+  path: String!
+  teacher: String!
+  price: Float!
+}
+
+Fijate que queda bien claro que es un valor de entrada.En cuanto al Level puedo asignar un valor de entrada a cualquier propiedad con =.Ejemplo clases: Int=0.
+Obviamente ya no será Int! pues no va a ser undefined más.
+
+La mutation ya no usará el ID(olvidate de eso ya):
+type Mutation {
+  "añadir un curso"
+  addCourse(course:CourseInput!):Boolean
+
+Ya sólo queda darle solución en el resolver.Fijate que no voy a necesitar los argumentos 1,3 y 4,y que el segundo argumento es de tipo ICourse,claro:
+   
+addCourse: (root: object, course: ICourse) => {
+   console.log(course);
+   return true;
+}
+
+De momento queremos ver sólo lo que introduzcamos por consola.Usaré una query Variable en el playground:
+
+mutation AddCourse($course:CourseInput!) {
+  addCourse(course: $course)
+}
+** Query Variable **
+{
+  "course": {
+    "title": "El curso del moko",
+    "description": "Moko vuelve a la ciudad",
+    "clases": 1,
+    "time": 5.5,
+    "logo": "logo muy feo",
+    "path": "path hacia alli",
+    "teacher": "Anastasio",
+    "price": 100      
+  }
+}
+
+Debería ver todo por consola y ver el true según tenemos la lógica.Y así sucede:
+
+Apollo Server on http://localhost:3003/graphql
+{
+  course: {
+    title: 'El curso del moko',
+    description: 'Moko vuelve a la ciudad',
+    clases: 1,
+    time: 5.5,
+    level: 'ALL',
+    logo: 'logo muy feo',
+    path: 'path hacia alli',
+    teacher: 'Anastasio',
+    price: 100
+  }
+}
+Haz todos los ejercicios bien y tranquilo
+3h10m

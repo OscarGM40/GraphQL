@@ -3,8 +3,7 @@ import cors from 'cors';
 import compression from 'compression';
 import { GraphQLSchema } from 'graphql';
 import { ApolloServer, } from 'apollo-server-express';
- import expressPlayGround from 'graphql-playground-middleware-express';
-  import { createServer, Server as HTTPServer } from 'http';
+import { createServer, Server as HTTPServer } from 'http';
 
 
 class Server {
@@ -37,16 +36,17 @@ class Server {
 
   }
 
-  private configApolloServer() {
+  private async configApolloServer() {
  
 
     /* CUATRO CONFIGURAR EL SERVIDOR APOLLO SERVER */
     this.server = new ApolloServer({
       schema: this.schema,
       introspection: true, //necesario para producción
-      playground: true //necesario para acceder al playground
+      // playground: true //necesario para acceder al playground
     })
     /* QUINTO aplicar el middleware a este nuevo servidor*/
+    await this.server.start();
     this.server.applyMiddleware({ app: this.app })
   }
 
@@ -56,9 +56,14 @@ class Server {
       res.send('Bienvenidos/as al curso de GraphQL by Anartz por la tarde');
     });
 
-    this.app.use('/', expressPlayGround({
+    /* version apollo-server-express@^2 */
+  /*   this.app.use('/', expressPlayGround({
       endpoint: '/graphql'
-    }));
+    })); */
+    
+    this.app.get('/', (_, res) => {
+      res.redirect('/graphql');
+    });
   }
 
   private createServer() {
