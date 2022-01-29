@@ -876,5 +876,109 @@ Apollo Server on http://localhost:3003/graphql
     price: 100
   }
 }
-Haz todos los ejercicios bien y tranquilo
-3h10m
+Haz todos los ejercicios bien y tranquilo.Dado que devolver un Boolean no es nada útil devuelvo una mejor respuesta al usuario:
+
+   addCourse: (root: object, args:{course: ICourse}):{
+      status:boolean,
+      message:string,
+      item:ICourse
+    } => {
+      args.course.id = String(data.courses.length + 1);
+      data.courses.push(args.course);
+      return {
+        status: true,
+        message: "Course"+ args.course.title+" added successfully",
+        item: args.course
+      };
+
+NOTA:al final tendré estas mutaciones:
+     * addCourse(course:CourseInput!):Result!
+     * updateCourse(course:CourseInput!):Result!
+     * deleteCourse(id:ID!):Result!
+     * 
+     * addStudent(student:StudentInput!):Result!
+     * updateStudent(student:StudentInput!):Result!
+     * deleteStudent(id:ID!):Result!
+
+Fijate que todas devuelven un Result que lleva una Union y por ello tengo que usar ...on.Perfecto.
+
+Si quiero puedo agregar cualquier validación y devolver lo que desee también:
+
+    const courseExists = data.courses.filter( course => course.title === args.course.title).length > 0 ;
+
+      if(courseExists){
+        return {
+          status: false,
+          message: "Course already exists",
+          item: null
+        }
+      }
+Obviamente esto me obliga a tipar item : ICourse | null.Perfecto,ya puedo devolver lo que quiera.
+
+						MUTATION - MODIFICAR CURSO
+
+Fijate que al final tuve que agregar a los inputs el id,pero sin ser obligatorio:
+
+input CourseInput {
+  id:ID
+
+Con findIndex y despues una asignación puede valer,aunque habría varias formas de editar el documento:
+    updateCourse: (root: object, args:{course: ICourse}):{
+      status: boolean,
+      message: string,
+      item:ICourse | null
+    } => {
+      const courseIndex = data.courses.findIndex( course => course.id === args.course.id);
+      if(courseIndex === -1){
+        return {
+          status: false,
+          message: "Course not found",
+          item: null
+        }
+      }
+      data.courses[courseIndex] = args.course;
+      return {
+        status: true,
+        message: "Course "+ args.course.title+" updated successfully",
+        item: args.course
+      };
+  },
+
+						MUTATION -DELETE COURSE
+
+En cuanto a borrar fijate que fácil lo puedo hacer con splice(index,1).Recuerda que debo chequear que el curso a borrar exista:
+
+deleteCourse: (root: object, args:{id: string}):{
+    status: boolean,
+    message: string,
+    item:ICourse | null
+  } => {
+    const courseIndex = data.courses.findIndex( course => course.id === args.id);
+    if(courseIndex === -1){
+      return {
+        status: false,
+        message: "Course not found",
+        item: null
+      }
+    }
+    data.courses.splice(courseIndex,1);
+    return {
+      status: true,
+      message: "Course deleted successfully",
+      item: null
+    };
+  },
+Recuerda que findIndex devuelve -1 si no lo encuentra y 0 o más si si lo hace.Splice(start,numberOfPositionsToCut) me permite borrar una posición facilmente.En este caso nos da igual mutar la data??.Investigar esto.
+
+LLegados a este punto haré el resto de las mutations para Student.
+
+						USAR POSTMAN PARA PETICIONES
+
+Desde cierta versión POSTMAN permite trabajar con GraphQL.Para ello en el body tengo que seleccionar la opción GraphQL.
+NOTA: GraphQL sólo admite peticiones POST,luego siempre será una petición POST.
+En cuanto seleccione en body la opción GraphQL veré tres zonas,la de la izqda es para la query,la que pone GraphQL Variables es para las query Variables.
+Abajo tendré la response.
+
+LLegados a este punto simplemente es escribir la query en su zona y mandarla.
+Lamentablemente no tendré visión sobre el schema y las queries,mutations o fields,asi que tendré que apoyarme en el playground.
+Sin embargo,lo bueno es que podré guardar en una colección todo y compartirlo entre equipos y personas.

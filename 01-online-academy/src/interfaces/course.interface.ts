@@ -1,5 +1,5 @@
 export interface ICourse {
-  id: string | number;
+  id: string;
   title: string;
   description: string;
   clases:number;
@@ -9,4 +9,5 @@ export interface ICourse {
   teacher: string;
   path: string;
   price: number;
+  reviews: any
 }

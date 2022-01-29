@@ -11,11 +11,17 @@ type Query {
 
 type Mutation {
   "añadir un curso"
-  addCourse(course:CourseInput!):Boolean
+  addCourse(course:CourseInput!):Result!
   "editar un curso"
-  updateCourse(id:ID!):Boolean
+  updateCourse(course:CourseInput!):Result!
   "eliminar un curso"
-  deleteCourse(id:ID!):Boolean
+  deleteCourse(id:ID!):Result!
+  "añadir un estudiante"
+  addStudent(student:StudentInput!):Result!
+  "editar un estudiante"
+  updateStudent(student:StudentInput!):Result!
+  "eliminar un estudiante"
+  deleteStudent(id:ID!):Result!
 }
 
 """ custom scalar """
@@ -55,6 +61,7 @@ type Course {
 """ fijate que al crear un curso no tiene sentido pasarle students pues no sabré que estudiantes se apuntarían a ese curso en ese momento.Y si pongo id:ID sin la ! el id pasa a ser opcional, es decir, puede ser null"""
 
 input CourseInput {
+  id:ID
   title: String!
   description: String!
   clases: Int!
@@ -64,6 +71,13 @@ input CourseInput {
   path: String!
   teacher: String!
   price: Float!
+}
+
+input StudentInput {
+  id:ID
+  name: String!
+  email: String!
+  website: String!
 }
 
 enum Level {
