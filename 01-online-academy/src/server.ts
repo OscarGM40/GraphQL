@@ -4,6 +4,7 @@ import compression from 'compression';
 import { GraphQLSchema } from 'graphql';
 import { ApolloServer, } from 'apollo-server-express';
 import { createServer, Server as HTTPServer } from 'http';
+import depthLimit from 'graphql-depth-limit';
 
 
 class Server {
@@ -43,6 +44,7 @@ class Server {
     this.server = new ApolloServer({
       schema: this.schema,
       introspection: true, //necesario para producción
+      validationRules:[depthLimit(3)]
       // playground: true //necesario para acceder al playground
     })
     /* QUINTO aplicar el middleware a este nuevo servidor*/

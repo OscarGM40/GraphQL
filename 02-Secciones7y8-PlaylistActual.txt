@@ -972,6 +972,40 @@ Recuerda que findIndex devuelve -1 si no lo encuentra y 0 o más si si lo hace.S
 
 LLegados a este punto haré el resto de las mutations para Student.
 
+				LIMITAR PROFUNDIDAD DE CONSULTA EN EL PLAYGROUND
+
+Puedo usar la libreria 'graphql-depth-limit' para limitar la complejidad y profundidad de las queries y que no se vuelvan recursivas.
+Es un simple mecanismo de defensa para queries recursivas.
+
+En este caso si pido un Student puedo acceder a los Courses(dos niveles),pero ya no quiero que desde esos Courses pueda pedir Student(y lo mismo pasa con Courses.
+
+Asi pues la instalo(fijate que en TS necesito los types):
+npm i graphql-depth-limit
+npm i @types/graphql-depth-limit -D
+
+Para usarlo me traigo la función depthLimit del paquete que acabo de instalar y se lo paso en la propiedad validationRules:
+
+import depthLimit from 'graphql-depth-limit';
+
+  this.server = new ApolloServer({
+      schema: this.schema,
+      introspection: true, //necesario para producción
+      validationRules:[depthLimit(3)]
+
+* Fijate que si uso express-graphql en vez de apollo también va cuando se crea el schema(siempre debajo de la propiedad schema)
+Esto es importante ya que si no protego el servidor lo pueden tumbar con una query ciclica en un abrir y cerrar de ojos.
+
+NOTA:una query ciclica luce asi:
+query evil {
+  album(id:42){
+   songs{ 
+      album{
+        songs{
+          album{
+            songs{
+              album{
+                 ....
+
 						USAR POSTMAN PARA PETICIONES
 
 Desde cierta versión POSTMAN permite trabajar con GraphQL.Para ello en el body tengo que seleccionar la opción GraphQL.
@@ -982,3 +1016,57 @@ Abajo tendré la response.
 LLegados a este punto simplemente es escribir la query en su zona y mandarla.
 Lamentablemente no tendré visión sobre el schema y las queries,mutations o fields,asi que tendré que apoyarme en el playground.
 Sin embargo,lo bueno es que podré guardar en una colección todo y compartirlo entre equipos y personas.
+
+En cuanto al uso de Postman simplemente creo peticiones al endpoint/graphql por POST y en body selecciono GraphQL.
+En GraphQL Variables puedo usar:
+{
+    "studentId":"2"
+}
+Y en la Query lo uso simplemente:
+query Student($studentId:ID!) {
+  studentById(id:$studentId) {
+    status
+    message
+    item {
+      ...on Student{
+       ...StudentFrag
+      }
+    }
+  }
+}
+
+fragment StudentFrag on Student {
+  id
+  name
+  website
+  email
+}
+Puedo ver que es exactamente igual que en el playground.Recalcar que puedo pedir más de un Student por Id usando alias:
+* Ni siquiera se tienen que llamar igual,fijate:
+{
+    "studentId":"2",
+    "id":"3"
+}
+
+query Student($studentId:ID!,$id:ID!) {
+  studentById(id:$studentId) {
+    status
+    message
+    item {
+      ...on Student{
+       ...StudentFrag
+      }
+    }
+  }
+    gets:studentById(id:$id) {
+    status
+    message
+    item {
+      ...on Student{
+       ...StudentFrag
+      }
+    }
+  }
+}
+
+No haré mas ya que es exactamente igual que en el playground.

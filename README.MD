@@ -1,12 +1,12 @@
 ## Dependencias para un proyecto GraphQL con Apollo Server
 ___
 #### Dependencias de producción:
-npm install express graphql ncp apollo-server-express@2.25.3 graphql-import-node compression cors
-typescript graphql-tools graphql-playground-middleware-express
+npm install express graphql ncp apollo-server-express@^3 graphql-import-node compression cors
+typescript graphql-tools graphql-playground-middleware-express graphql-depth-limit
 ___
 #### Dependencias de desarrollo:
 npm install @types/compression @types/express @types/cors @types/express-graphql
-@types/node @types/graphql nodemon ts-node -D
+@types/node @types/graphql @types/graphql-depth-limit nodemon ts-node -D
 ___
 
 #### Script para configurar el tsconfig.json rápidamente
