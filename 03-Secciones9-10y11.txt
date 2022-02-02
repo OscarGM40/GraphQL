@@ -1,0 +1,206 @@
+					SECCION 09 TRANSFORMAR API REST EN API GRAPHQL
+
+
+Vamos a trabajar con la Ergast API.Aprenderemos a transformar una API REST en una GraphQL
+
+			VIDEO 86 GENERAR PROYECTO MEDIANTE CLI CON UN STARTER DE ANARTZ
+
+Anartz ha creado un generador de starters para GraphQL.Está en este repo:
+https://github.com/mugan86/graphql-project-cli
+
+>npm i -g mugan86/graphql-project-cli
+
+Para empezar un proyecto:
+>graphql-anartz
+Hay 4 tipos,uno normal,otro con db y otro con env
+
+Ojo,que me creará en donde esté el proyecto.Instalo el proyecto que quiera y vamos a instalar un par de dependencias más:
+npm i apollo-datasource-rest apollo-server <- la última en legacy.
+
+						VIDEO 87 ENDPOINTS DE LA API REST
+
+1.- Carreras
+De un año concreto:
+URL: https://ergast.com/api/f1/<YEAR>
+API: https://ergast.com/api/f1/<YEAR>.json
+
+De un año concreto y carrera concreta:
+URL: https://ergast.com/api/f1/<YEAR>/<ROUND>
+API: https://ergast.com/api/f1/<YEAR>/<ROUND>.json
+
+2.- Pilotos
+Pilotos de la historia - Todos:
+
+URL: https://ergast.com/api/f1/drivers?limit=1000
+API: https://ergast.com/api/f1/drivers.json?limit=1000
+
+Pilotos con resultados por página - x pilotos por página
+
+URL: https://ergast.com/api/f1/drivers?limit=x
+API: https://ergast.com/api/f1/drivers.json?limit=x&offset=(<pagina> - 1) * x
+
+x será el número de pilotos por página.
+
+Piloto seleccionado:
+
+URL: https://ergast.com/api/f1/drivers/<driverId>
+API: https://ergast.com/api/f1/drivers/<driverId>.json
+
+3.- Temporadas
+Temporadas de la historia - Todos:
+
+URL: https://ergast.com/api/f1/seasons?limit=100
+API: https://ergast.com/api/f1/seasons.json?limit=100
+
+4.- Circuitos
+Circuitos de la historia - Todos:
+
+URL: https://ergast.com/api/f1/seasons?limit=500
+API: https://ergast.com/api/f1/seasons.json?limit=500
+
+Circuitos con resultados por página - x pilotos por página
+
+URL: https://ergast.com/api/f1/circuits?limit=x
+API: https://ergast.com/api/f1/circuits.json?limit=x&offset=(<pagina> - 1) * x
+
+Circuito seleccionado:
+
+URL: https://ergast.com/api/f1/circuits/<circuitId>
+API: https://ergast.com/api/f1/circuits/<circuitId>.json
+
+5.- Estadísticas
+
+Clasificación de la temporada - Pilotos:
+URL: http://ergast.com/api/f1/<YEAR>/driverStandings
+API: http://ergast.com/api/f1/<YEAR>/driverStandings.json
+
+Clasificación de la temporada - Constructores:
+
+URL: http://ergast.com/api/f1/<YEAR>/constructorStandings
+API: http://ergast.com/api/f1/<YEAR>/constructorStandings.json
+
+Clasificación de la carrera y año - Pilotos:
+
+URL: http://ergast.com/api/f1/<YEAR>/<RONDA>/driverStandings
+API: http://ergast.com/api/f1/<YEAR>/<RONDA>/driverStandings.json
+
+Clasificación de la carrera y año - Constructores:
+
+URL: http://ergast.com/api/f1/<YEAR>/<RONDA>/constructorStandings
+API: http://ergast.com/api/f1/<YEAR>/<RONDA>/constructorStandings.json
+
+Resultados de una carrera profesional de un piloto:
+
+URL: http://ergast.com/api/f1/drivers/<ID_DRIVER>/driverStandings
+API: http://ergast.com/api/f1/drivers/<ID_DRIVER>/driverStandings.json
+
+Podéis encontrar más información en: https://ergast.com/mrd/
+
+		VIDEO 88 AÑADIR LA FUENTE DE DATOS (LA API REST)
+
+Creo el directorio data y en él dos files.
+
+Las DataSources son clases que Apollo Server puede usar para encapsular data de una fuente o source,como una database o una REST API.
+Fijate que tengo la clase RESTDataSource para fetchear data desde una REST API y la clase SQLDataSource que fetchea datos desde una SQL Database. 
+
+import { RESTDataSource } from "apollo-datasource-rest";
+
+export class F1 extends RESTDataSource {
+  /* implemento de la clase RESTDataSource sus propiedades y métodos con super() 
+  constructor() {
+    super(); // <- IMPORTANTE
+    this.baseURL = "https://ergast.com/api/f1/";
+  }
+
+La otra clase heredará de F1,y por tanto tiene también todo lo de RESTDataSource.
+import { F1 } from "./data-source";
+
+export class SeasonsData extends F1 {
+
+  /* fijate que SeasonsData hereda de F1 que heredó de RestDataSource */
+  constructor() {
+    super(); // <- IMPORTANTE
+  }
+}
+
+NOTA: cuando tenga una fuente de datos tengo que pasarlo al servidor Apollo en la propiedad opcional 'dataSources'.Recibe una callback como valor:
+
+    const server = new ApolloServer({
+        schema,
+        introspection: true,
+        dataSources: () => ({
+            seasons: new SeasonsData() <- instanciar clases anteriores
+        })
+    });
+
+					VIDEO 89 DEFINICION DEL SCHEMA
+
+Puedo ver que la URL de la API funciona bien.Fijate que puedo pasar a json cualquier URL simplemente añadiendo .json al final.No sabia esto,interesante:
+
+https://ergast.com/api/f1/seasons?limit=30&offset=60
+https://ergast.com/api/f1/seasons.json?limit=30&offset=60
+
+Bien,paso la respuesta de ese SQL a json(con quicktype.io o JSON to TS o cualquier conversor) y creo el schema correctamente:
+
+type Query {
+    seasonsList: [Season!]!
+}
+
+type Season {
+    year: String!
+    url: String!
+    urlMobile: String!
+} <- fijate que son todo type,input pero interface no existe asinto.
+
+					VIDEO 90 LISTAR TODAS LAS TEMPORADAS	
+
+Fijate que para obtener todas las temporadas tengo que hacer la petición rest.Esto irá como un método asíncrono de la clase:
+
+  async getSeasons(){
+    return await this.get(`seasons.json?limit=100`,{
+      cacheOptions: { ttl: 60 }
+    })
+  }
+
+Cada petición es un método que cachearé por unos minutos(60 en este caso).
+IMPORTANTE: ahora en resolvers/query.ts cambia un poco.Lo primero es que será una query asincrona(todas las interacciones con la REST lo serán):
+
+const query: IResolvers = {
+    Query: {
+     async seasonsList(_:void, __:any,{dataSources}){
+         return await dataSources.seasons.getSeasons()
+         .then( (data:any) => data.MRData.SeasonTable.Seasons)
+         ;
+     }, 
+    }
+Lo segundo es que interactuaré con el tercer argumento,alli tengo las dataSources del Server.
+Lo tercero es llamar al método de la clase mediante la instancia.
+Lo cuarto es devolver exactamente lo que quiero.En este caso queremos entrar a la response.MRData.SeasonTable.Seasons para devolver sólo las Seasons.En este punto sería buena idea tipar las responses,etc...
+
+Bien:fijate que nos da error si uso year pues ellos han usado season:"1955".Veremos en el siguiente video como solucionar las propiedades nulas o non-nullables.
+Si embargo la url si que puedo pedir.Desde luego es bastante sencillo pasar una REST a GraphQL:
+query {
+  seasonsList {
+    url
+  }
+}
+
+{
+  "data": {
+    "seasonsList": [
+      {
+        "url": "https://en.wikipedia.org/wiki/1950_Formula_One_season"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/1951_Formula_One_season"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/1952_Formula_One_season"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/1953_Formula_One_season"
+      },
+
+Genial
+
+			VIDEO 91 SOLUCIONAR PROPIEDADES NULAS CON TYPE

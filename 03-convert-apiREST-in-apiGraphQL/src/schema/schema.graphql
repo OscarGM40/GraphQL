@@ -1,0 +1,10 @@
+type Query {
+    "lista todas las temporadas llamando a la Api REST Ergast"
+    seasonsList: [Season!]!
+}
+
+type Season {
+    year: String!
+    url: String!
+    urlMobile: String!
+}
